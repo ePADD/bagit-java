@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
-
+import java.io.*;
 import org.slf4j.helpers.MessageFormatter;
 
 import gov.loc.repository.bagit.exceptions.FileNotInManifestException;
@@ -23,8 +23,8 @@ public class PayloadFileExistsInAtLeastOneManifestVistor extends AbstractPayload
   }
 
   @Override
-  public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)throws FileNotInManifestException{
-    if(Files.isRegularFile(path) && !filesListedInManifests.contains(path.normalize())){
+  public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)throws FileNotInManifestException, IOException{
+    if(!Files.isHidden(path) && Files.isRegularFile(path) && !filesListedInManifests.contains(path.normalize())){
       final String formattedMessage = messages.getString("file_not_in_any_manifest_error");
       throw new FileNotInManifestException(MessageFormatter.format(formattedMessage, path).getMessage());
     }

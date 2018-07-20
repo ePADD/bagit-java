@@ -1,9 +1,10 @@
 package gov.loc.repository.bagit.writer;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map.Entry;
 import java.util.ResourceBundle;
@@ -59,20 +60,22 @@ public final class ManifestWriter{
    * Generic method to write manifests
    */
   private static void writeManifests(final Set<Manifest> manifests, final Path outputDir, final Path relativeTo, final String filenameBase, final Charset charsetName) throws IOException{
-    for(final Manifest manifest : manifests){
+    for(final Manifest manifest : manifests) {
       final Path manifestPath = outputDir.resolve(filenameBase + manifest.getAlgorithm().getBagitName() + ".txt");
       logger.debug(messages.getString("writing_manifest_to_path"), manifestPath);
 
       Files.deleteIfExists(manifestPath);
       Files.createFile(manifestPath);
-      
-      for(final Entry<Path, String> entry : manifest.getFileToChecksumMap().entrySet()){
-        //there are 2 spaces between the checksum and the path so that the manifests are compatible with the md5sum tools available on most unix systems.
-        //This may cause problems on windows due to it being text mode, in which case either replace with a * or try verifying in binary mode with --binary
-        final String line = entry.getValue() + "  " + RelativePathWriter.formatRelativePathString(relativeTo, entry.getKey());
-        logger.debug(messages.getString("writing_line_to_file"), line, manifestPath);
-        Files.write(manifestPath, line.getBytes(charsetName), 
-            StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+      int bufsize = 64 * 1024;
+      try (FileOutputStream fo = new FileOutputStream(manifestPath.toFile().getAbsolutePath(), true);
+           BufferedOutputStream bos = new BufferedOutputStream(fo, bufsize)) {
+        for (final Entry<Path, String> entry : manifest.getFileToChecksumMap().entrySet()) {
+          //there are 2 spaces between the checksum and the path so that the manifests are compatible with the md5sum tools available on most unix systems.
+          //This may cause problems on windows due to it being text mode, in which case either replace with a * or try verifying in binary mode with --binary
+          final String line = entry.getValue() + "  " + RelativePathWriter.formatRelativePathString(relativeTo, entry.getKey());
+          logger.debug(messages.getString("writing_line_to_file"), line, manifestPath);
+          bos.write(line.getBytes(charsetName));
+        }
       }
     }
   }
